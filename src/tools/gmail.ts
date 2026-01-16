@@ -109,13 +109,29 @@ Examples:
       try {
         const gmail = getGmailClient();
 
-        const response = await gmail.users.messages.list({
+        // Build params object, only including defined values
+        const listParams: {
+          userId: string;
+          maxResults: number;
+          q?: string;
+          labelIds?: string[];
+          pageToken?: string;
+        } = {
           userId: "me",
-          q: params.query,
-          maxResults: params.max_results,
-          labelIds: params.label_ids,
-          pageToken: params.page_token
-        });
+          maxResults: params.max_results
+        };
+
+        if (params.query) {
+          listParams.q = params.query;
+        }
+        if (params.label_ids && params.label_ids.length > 0) {
+          listParams.labelIds = params.label_ids;
+        }
+        if (params.page_token) {
+          listParams.pageToken = params.page_token;
+        }
+
+        const response = await gmail.users.messages.list(listParams);
 
         const messageIds = response.data.messages || [];
 
@@ -289,13 +305,29 @@ Returns:
       try {
         const gmail = getGmailClient();
 
-        const response = await gmail.users.threads.list({
+        // Build params object, only including defined values
+        const listParams: {
+          userId: string;
+          maxResults: number;
+          q?: string;
+          labelIds?: string[];
+          pageToken?: string;
+        } = {
           userId: "me",
-          q: params.query,
-          maxResults: params.max_results,
-          labelIds: params.label_ids,
-          pageToken: params.page_token
-        });
+          maxResults: params.max_results
+        };
+
+        if (params.query) {
+          listParams.q = params.query;
+        }
+        if (params.label_ids && params.label_ids.length > 0) {
+          listParams.labelIds = params.label_ids;
+        }
+        if (params.page_token) {
+          listParams.pageToken = params.page_token;
+        }
+
+        const response = await gmail.users.threads.list(listParams);
 
         const threadIds = response.data.threads || [];
 
