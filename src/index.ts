@@ -16,7 +16,7 @@ import { registerSheetsTools } from "./tools/sheets.js";
 
 const server = new McpServer({
   name: "google-workspace-mcp-server",
-  version: "1.1.0"
+  version: "1.1.1"
 });
 
 registerDocsTools(server);
