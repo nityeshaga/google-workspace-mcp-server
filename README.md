@@ -149,10 +149,13 @@ Restart Claude Code to load the new MCP server. You should now be able to use Go
 | `sheets_batch_update` | Apply formatting, charts, filters |
 | `sheets_clear_values` | Clear cell values from a range |
 
-### Google Drive API (Comments)
+### Google Drive API
 
 | Tool | Description |
 |------|-------------|
+| `drive_get_file` | Download file content (PDFs, images, etc.) |
+| `drive_list_files` | List files in your Drive |
+| `drive_search_files` | Search for files by name or content |
 | `drive_list_comments` | List comments on a document |
 | `drive_create_comment` | Add a comment (anchored or unanchored) |
 | `drive_reply_to_comment` | Reply to an existing comment |
@@ -164,8 +167,10 @@ Restart Claude Code to load the new MCP server. You should now be able to use Go
 Once configured, you can ask Claude Code things like:
 
 - "Read my Google Doc at https://docs.google.com/document/d/abc123/edit"
+- "Read this PDF from my Drive: https://drive.google.com/file/d/xyz789/view"
 - "Create a new Google Doc with meeting notes from today"
 - "Add a row to my spreadsheet with today's data"
+- "Search my Drive for files about project planning"
 - "Show me the comments on this document"
 - "Reply to John's comment saying I'll fix it tomorrow"
 

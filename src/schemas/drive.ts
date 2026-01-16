@@ -119,3 +119,11 @@ export const SearchFilesSchema = z.object({
 }).strict();
 
 export type SearchFilesInput = z.infer<typeof SearchFilesSchema>;
+
+export const GetFileSchema = z.object({
+  file_id: z.string()
+    .min(1, "File ID is required")
+    .describe("The ID of the file to download (found in the URL)")
+}).strict();
+
+export type GetFileInput = z.infer<typeof GetFileSchema>;

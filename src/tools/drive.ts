@@ -8,13 +8,15 @@ import {
   DeleteCommentSchema,
   ListFilesSchema,
   SearchFilesSchema,
+  GetFileSchema,
   type ListCommentsInput,
   type CreateCommentInput,
   type ReplyToCommentInput,
   type ResolveCommentInput,
   type DeleteCommentInput,
   type ListFilesInput,
-  type SearchFilesInput
+  type SearchFilesInput,
+  type GetFileInput
 } from "../schemas/drive.js";
 import { ResponseFormat } from "../constants.js";
 import type { CommentData, ReplyData, FileData } from "../types.js";
@@ -655,6 +657,157 @@ Examples:
           content: [{ type: "text", text: textOutput }],
           structuredContent: output
         };
+      } catch (error) {
+        return {
+          content: [{ type: "text", text: handleGoogleError(error) }]
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "drive_get_file",
+    {
+      title: "Get File Content",
+      description: `Download and return the content of a file from Google Drive. Supports PDFs, images, and other binary files.
+
+Args:
+  - file_id (string): The ID of the file to download (found in the URL after /d/)
+
+Returns:
+  The file content. For PDFs and images, returns the binary content that Claude can read directly.
+
+Examples:
+  - Get PDF: file_id="1Q3BmlH3_sII1VGf0-GYXSiLGTZstM-l1"
+  - From URL https://drive.google.com/file/d/ABC123/view -> file_id="ABC123"`,
+      inputSchema: GetFileSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true
+      }
+    },
+    async (params: GetFileInput) => {
+      try {
+        const drive = getDriveClient();
+
+        // First get file metadata to determine type and name
+        const metadata = await drive.files.get({
+          fileId: params.file_id,
+          fields: "id,name,mimeType,size"
+        });
+
+        const mimeType = metadata.data.mimeType || "application/octet-stream";
+        const fileName = metadata.data.name || "file";
+        const fileSize = metadata.data.size ? Number(metadata.data.size) : 0;
+
+        // Check if it's a Google Workspace file that needs export
+        const isGoogleWorkspaceFile = mimeType.startsWith("application/vnd.google-apps.");
+
+        let fileContent: Buffer;
+        let finalMimeType = mimeType;
+
+        if (isGoogleWorkspaceFile) {
+          // Export Google Workspace files to appropriate format
+          let exportMimeType: string;
+          if (mimeType === "application/vnd.google-apps.document") {
+            exportMimeType = "application/pdf";
+          } else if (mimeType === "application/vnd.google-apps.spreadsheet") {
+            exportMimeType = "application/pdf";
+          } else if (mimeType === "application/vnd.google-apps.presentation") {
+            exportMimeType = "application/pdf";
+          } else {
+            exportMimeType = "application/pdf";
+          }
+
+          const response = await drive.files.export({
+            fileId: params.file_id,
+            mimeType: exportMimeType
+          }, {
+            responseType: "arraybuffer"
+          });
+
+          fileContent = Buffer.from(response.data as ArrayBuffer);
+          finalMimeType = exportMimeType;
+        } else {
+          // Download binary files directly
+          const response = await drive.files.get({
+            fileId: params.file_id,
+            alt: "media"
+          }, {
+            responseType: "arraybuffer"
+          });
+
+          fileContent = Buffer.from(response.data as ArrayBuffer);
+        }
+
+        const base64Content = fileContent.toString("base64");
+
+        // Return as appropriate content type
+        if (finalMimeType === "application/pdf") {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `File: ${fileName}\nType: ${finalMimeType}\nSize: ${formatFileSize(fileContent.length)}`
+              },
+              {
+                type: "resource",
+                resource: {
+                  uri: `data:${finalMimeType};base64,${base64Content}`,
+                  mimeType: finalMimeType,
+                  blob: base64Content
+                }
+              }
+            ]
+          };
+        } else if (finalMimeType.startsWith("image/")) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `File: ${fileName}\nType: ${finalMimeType}\nSize: ${formatFileSize(fileContent.length)}`
+              },
+              {
+                type: "image",
+                data: base64Content,
+                mimeType: finalMimeType
+              }
+            ]
+          };
+        } else {
+          // For other files, try to return as text if possible
+          try {
+            const textContent = fileContent.toString("utf-8");
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `File: ${fileName}\nType: ${finalMimeType}\nSize: ${formatFileSize(fileContent.length)}\n\n---\n\n${textContent}`
+                }
+              ]
+            };
+          } catch {
+            // If not text, return as base64
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `File: ${fileName}\nType: ${finalMimeType}\nSize: ${formatFileSize(fileContent.length)}\n\nBinary file downloaded. Base64 content available.`
+                },
+                {
+                  type: "resource",
+                  resource: {
+                    uri: `data:${finalMimeType};base64,${base64Content}`,
+                    mimeType: finalMimeType,
+                    blob: base64Content
+                  }
+                }
+              ]
+            };
+          }
+        }
       } catch (error) {
         return {
           content: [{ type: "text", text: handleGoogleError(error) }]
